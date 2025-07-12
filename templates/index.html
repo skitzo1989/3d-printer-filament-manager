@@ -1,0 +1,681 @@
+{% extends "base.html" %}
+
+{% block title %}Filament Inventory - 3D Printer Filament Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-cube text-primary me-2"></i>Filament Inventory</h1>
+            <div class="d-flex gap-2">
+                <!-- Settings Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="settingsDropdown" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog me-1"></i>Settings
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <h6 class="dropdown-header">
+                                <i class="fas fa-trash me-1"></i>Delete Confirmations
+                            </h6>
+                        </li>
+                        <li>
+                            <button class="dropdown-item" onclick="resetDeleteConfirmation()">
+                                <i class="fas fa-bell me-2"></i>
+                                Re-enable Delete Confirmations
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item" onclick="checkDeleteConfirmationStatus()">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Check Current Setting
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <a href="/add" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Add New Filament
+                </a>
+            </div>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search filaments...">
+                    </div>
+                    <div class="col-md-3">
+                        <select id="materialFilter" class="form-select">
+                            <option value="">All Materials</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="brandFilter" class="form-select">
+                            <option value="">All Brands</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button id="clearFilters" class="btn btn-outline-secondary w-100">Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filament Cards -->
+        <div id="filamonts-container" class="row">
+            <!-- Filaments will be loaded here -->
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="loading" class="text-center mt-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- No results message -->
+        <div id="no-results" class="text-center mt-4 d-none">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No filaments found</h4>
+            <p class="text-muted">Try adjusting your search criteria or add your first filament.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Edit Filament</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editBrand" class="form-label">Brand</label>
+                            <input type="text" class="form-control" id="editBrand" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMaterial" class="form-label">Material</label>
+                            <select class="form-select" id="editMaterial" required>
+                                <option value="PLA">PLA</option>
+                                <option value="ABS">ABS</option>
+                                <option value="PETG">PETG</option>
+                                <option value="TPU">TPU</option>
+                                <option value="ASA">ASA</option>
+                                <option value="PC">Polycarbonate</option>
+                                <option value="NYLON">Nylon</option>
+                                <option value="WOOD">Wood Fill</option>
+                                <option value="METAL">Metal Fill</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editColor" class="form-label">Color</label>
+                            <input type="text" class="form-control" id="editColor" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editDiameter" class="form-label">Diameter (mm)</label>
+                            <input type="number" class="form-control" id="editDiameter" step="0.1" value="1.75">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editWeight" class="form-label">Weight (g)</label>
+                            <input type="number" class="form-control" id="editWeight" step="0.1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editStorageLocation" class="form-label">Storage Location</label>
+                            <input type="text" class="form-control" id="editStorageLocation">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="editNozzleTempMin" class="form-label">Min Nozzle Temp (°C)</label>
+                            <input type="number" class="form-control" id="editNozzleTempMin">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="editNozzleTempMax" class="form-label">Max Nozzle Temp (°C)</label>
+                            <input type="number" class="form-control" id="editNozzleTempMax">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="editNozzleTempRecommended" class="form-label">Recommended (°C)</label>
+                            <input type="number" class="form-control" id="editNozzleTempRecommended">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="editBedTemp" class="form-label">Bed Temp (°C)</label>
+                            <input type="number" class="form-control" id="editBedTemp">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editPrintSpeedRecommended" class="form-label">Print Speed (mm/s)</label>
+                            <input type="number" class="form-control" id="editPrintSpeedRecommended">
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="editNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="editNotes" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editPurchasePrice" class="form-label">Purchase Price ($)</label>
+                            <input type="number" class="form-control" id="editPurchasePrice" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allFilaments = [];
+
+// Load filaments when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadFilaments();
+});
+
+async function loadFilaments() {
+    try {
+        const response = await axios.get('/api/filaments');
+        allFilaments = response.data;
+        populateFilters();
+        displayFilaments(allFilaments);
+        document.getElementById('loading').style.display = 'none';
+    } catch (error) {
+        console.error('Error loading filaments:', error);
+        document.getElementById('loading').innerHTML = '<div class="alert alert-danger">Error loading filaments</div>';
+    }
+}
+
+function populateFilters() {
+    const materials = [...new Set(allFilaments.map(f => f.material))];
+    const brands = [...new Set(allFilaments.map(f => f.brand))];
+    
+    const materialFilter = document.getElementById('materialFilter');
+    const brandFilter = document.getElementById('brandFilter');
+    
+    materialFilter.innerHTML = '<option value="">All Materials</option>';
+    brandFilter.innerHTML = '<option value="">All Brands</option>';
+    
+    materials.forEach(material => {
+        materialFilter.innerHTML += `<option value="${material}">${material}</option>`;
+    });
+    
+    brands.forEach(brand => {
+        brandFilter.innerHTML += `<option value="${brand}">${brand}</option>`;
+    });
+}
+
+function displayFilaments(filaments) {
+    const container = document.getElementById('filamonts-container');
+    const noResults = document.getElementById('no-results');
+    
+    if (filaments.length === 0) {
+        container.innerHTML = '';
+        noResults.classList.remove('d-none');
+        return;
+    }
+    
+    noResults.classList.add('d-none');
+    
+    container.innerHTML = filaments.map(filament => `
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <span class="filament-color" style="background: ${getColorValue(filament.color)}"></span>
+                        ${filament.brand} ${filament.material}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        <strong>Color:</strong> ${filament.color}<br>
+                        <strong>Diameter:</strong> ${filament.diameter}mm<br>
+                        ${filament.weight ? `<strong>Weight:</strong> ${filament.weight}g<br>` : ''}
+                        ${filament.storage_location ? `<strong>Location:</strong> ${filament.storage_location}<br>` : ''}
+                    </p>
+                    <div class="mb-2 badge-container">
+                        ${filament.nozzle_temp_min || filament.nozzle_temp_max ? 
+                            `<span class="temp-badge">
+                                <i class="fas fa-thermometer-half"></i> 
+                                Nozzle: ${filament.nozzle_temp_min || '?'}°C - ${filament.nozzle_temp_max || '?'}°C
+                            </span>` : ''
+                        }
+                        ${filament.nozzle_temp_recommended ? 
+                            `<span class="temp-badge" style="background-color: #d1ecf1; color: #0c5460;">
+                                <i class="fas fa-star"></i> 
+                                Rec: ${filament.nozzle_temp_recommended}°C
+                            </span>` : ''
+                        }
+                        ${filament.bed_temp ? 
+                            `<span class="temp-badge">
+                                <i class="fas fa-bed"></i> 
+                                Bed: ${filament.bed_temp}°C
+                            </span>` : ''
+                        }
+                        ${filament.print_speed_recommended ? 
+                            `<span class="temp-badge" style="background-color: #d4edda; color: #155724;">
+                                <i class="fas fa-tachometer-alt"></i> 
+                                Speed: ${filament.print_speed_recommended} mm/s
+                            </span>` : ''
+                        }
+                    </div>
+                    ${filament.notes ? `<p class="card-text"><small class="text-muted">${filament.notes}</small></p>` : ''}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="editFilament(${filament.id})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteFilament(${filament.id})">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getColorValue(colorName) {
+    const colorLower = colorName.toLowerCase();
+    
+    // Comprehensive color mapping including compound names from our sample data
+    const colorMap = {
+        // Exact matches for our sample data colors
+        'true black': '#000000',
+        'true white': '#ffffff', 
+        'transparent red': '#ff6666',
+        'galaxy black': '#1a1a2e',
+        'prusa orange': '#ff6900',
+        'jet black': '#000000',
+        'cool white': '#f8f8ff',
+        'silver': '#c0c0c0',
+        'natural clear': '#f0f0f0',
+        'matte black': '#28282b',
+        'army green': '#4b5320',
+        'transparent blue': '#6666ff',
+        'silk gold': '#ffd700',
+        'natural wood': '#8b4513',
+        'stainless steel': '#c0c0c0',
+        'flamingo pink': '#fc8eac',
+        'glow in dark green': '#39ff14',
+        'silk rainbow': 'linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)',
+        
+        // Basic colors
+        'red': '#ff0000',
+        'blue': '#0000ff', 
+        'green': '#008000',
+        'yellow': '#ffff00',
+        'orange': '#ffa500',
+        'purple': '#800080',
+        'pink': '#ffc0cb',
+        'black': '#000000',
+        'white': '#ffffff',
+        'gray': '#808080',
+        'grey': '#808080',
+        'brown': '#a52a2a',
+        'clear': '#f0f0f0',
+        'natural': '#f5f5dc',
+        'transparent': '#f0f0f0',
+        
+        // Additional colors
+        'dark blue': '#00008b',
+        'light blue': '#add8e6',
+        'dark green': '#006400',
+        'light green': '#90ee90',
+        'dark red': '#8b0000',
+        'light red': '#ffcccb',
+        'gold': '#ffd700',
+        'bronze': '#cd7f32',
+        'copper': '#b87333',
+        'metallic': '#c0c0c0',
+        'translucent': '#f0f0f0',
+        'opaque': '#f5f5f5'
+    };
+    
+    // First try exact match
+    if (colorMap[colorLower]) {
+        return colorMap[colorLower];
+    }
+    
+    // Try to extract base color from compound names
+    const colorWords = colorLower.split(' ');
+    for (const word of colorWords) {
+        if (colorMap[word]) {
+            // Found a base color, return a variant based on modifiers
+            let baseColor = colorMap[word];
+            
+            // Apply modifiers
+            if (colorLower.includes('dark')) {
+                baseColor = darkenColor(baseColor);
+            } else if (colorLower.includes('light')) {
+                baseColor = lightenColor(baseColor);
+            } else if (colorLower.includes('transparent') || colorLower.includes('translucent')) {
+                baseColor = addTransparency(baseColor);
+            } else if (colorLower.includes('metallic') || colorLower.includes('silk')) {
+                baseColor = addMetallicEffect(baseColor);
+            }
+            
+            return baseColor;
+        }
+    }
+    
+    // Default fallback color (neutral gray)
+    return '#6c757d';
+}
+
+function darkenColor(hex) {
+    // Darken a hex color by reducing RGB values
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    const factor = 0.6; // Darken by 40%
+    const newR = Math.floor(r * factor);
+    const newG = Math.floor(g * factor);
+    const newB = Math.floor(b * factor);
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+}
+
+function lightenColor(hex) {
+    // Lighten a hex color by increasing RGB values
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    const factor = 0.7; // Lighten by mixing with white
+    const newR = Math.floor(r + (255 - r) * factor);
+    const newG = Math.floor(g + (255 - g) * factor);
+    const newB = Math.floor(b + (255 - b) * factor);
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+}
+
+function addTransparency(hex) {
+    // Make transparent colors appear lighter
+    return lightenColor(hex);
+}
+
+function addMetallicEffect(hex) {
+    // Add a subtle metallic sheen by mixing with silver
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    // Mix with silver (192, 192, 192)
+    const factor = 0.3;
+    const newR = Math.floor(r + (192 - r) * factor);
+    const newG = Math.floor(g + (192 - g) * factor);
+    const newB = Math.floor(b + (192 - b) * factor);
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+}
+
+// Search and filter functionality
+document.getElementById('searchInput').addEventListener('input', filterFilaments);
+document.getElementById('materialFilter').addEventListener('change', filterFilaments);
+document.getElementById('brandFilter').addEventListener('change', filterFilaments);
+document.getElementById('clearFilters').addEventListener('click', clearFilters);
+
+function filterFilaments() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const materialFilter = document.getElementById('materialFilter').value;
+    const brandFilter = document.getElementById('brandFilter').value;
+    
+    const filtered = allFilaments.filter(filament => {
+        const matchesSearch = !searchTerm || 
+            filament.brand.toLowerCase().includes(searchTerm) ||
+            filament.material.toLowerCase().includes(searchTerm) ||
+            filament.color.toLowerCase().includes(searchTerm) ||
+            (filament.storage_location && filament.storage_location.toLowerCase().includes(searchTerm));
+        
+        const matchesMaterial = !materialFilter || filament.material === materialFilter;
+        const matchesBrand = !brandFilter || filament.brand === brandFilter;
+        
+        return matchesSearch && matchesMaterial && matchesBrand;
+    });
+    
+    displayFilaments(filtered);
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('materialFilter').value = '';
+    document.getElementById('brandFilter').value = '';
+    displayFilaments(allFilaments);
+}
+
+// Edit functionality
+function editFilament(id) {
+    const filament = allFilaments.find(f => f.id === id);
+    if (!filament) return;
+    
+    document.getElementById('editId').value = filament.id;
+    document.getElementById('editBrand').value = filament.brand;
+    document.getElementById('editMaterial').value = filament.material;
+    document.getElementById('editColor').value = filament.color;
+    document.getElementById('editDiameter').value = filament.diameter;
+    document.getElementById('editWeight').value = filament.weight || '';
+    document.getElementById('editStorageLocation').value = filament.storage_location || '';
+    document.getElementById('editNozzleTempMin').value = filament.nozzle_temp_min || '';
+    document.getElementById('editNozzleTempMax').value = filament.nozzle_temp_max || '';
+    document.getElementById('editNozzleTempRecommended').value = filament.nozzle_temp_recommended || '';
+    document.getElementById('editBedTemp').value = filament.bed_temp || '';
+    document.getElementById('editPrintSpeedRecommended').value = filament.print_speed_recommended || '';
+    document.getElementById('editNotes').value = filament.notes || '';
+    document.getElementById('editPurchasePrice').value = filament.purchase_price || '';
+    
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+document.getElementById('editForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('editId').value;
+    const data = {
+        brand: document.getElementById('editBrand').value,
+        material: document.getElementById('editMaterial').value,
+        color: document.getElementById('editColor').value,
+        diameter: parseFloat(document.getElementById('editDiameter').value),
+        weight: document.getElementById('editWeight').value ? parseFloat(document.getElementById('editWeight').value) : null,
+        storage_location: document.getElementById('editStorageLocation').value || null,
+        nozzle_temp_min: document.getElementById('editNozzleTempMin').value ? parseInt(document.getElementById('editNozzleTempMin').value) : null,
+        nozzle_temp_max: document.getElementById('editNozzleTempMax').value ? parseInt(document.getElementById('editNozzleTempMax').value) : null,
+        nozzle_temp_recommended: document.getElementById('editNozzleTempRecommended').value ? parseInt(document.getElementById('editNozzleTempRecommended').value) : null,
+        bed_temp: document.getElementById('editBedTemp').value ? parseInt(document.getElementById('editBedTemp').value) : null,
+        print_speed_recommended: document.getElementById('editPrintSpeedRecommended').value ? parseInt(document.getElementById('editPrintSpeedRecommended').value) : null,
+        notes: document.getElementById('editNotes').value || null,
+        purchase_price: document.getElementById('editPurchasePrice').value ? parseFloat(document.getElementById('editPurchasePrice').value) : null
+    };
+    
+    try {
+        await axios.put(`/api/filaments/${id}`, data);
+        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+        loadFilaments();
+    } catch (error) {
+        console.error('Error updating filament:', error);
+        alert('Error updating filament');
+    }
+});
+
+// Delete functionality with "do not ask again" option
+async function deleteFilament(id) {
+    // Check if user has disabled confirmation
+    const skipConfirm = localStorage.getItem('skipDeleteConfirmation') === 'true';
+    
+    if (skipConfirm) {
+        // Skip confirmation and delete directly
+        await performDelete(id);
+        return;
+    }
+    
+    // Show custom confirmation dialog
+    const confirmed = await showDeleteConfirmation();
+    if (confirmed) {
+        await performDelete(id);
+    }
+}
+
+async function performDelete(id) {
+    try {
+        await axios.delete(`/api/filaments/${id}`);
+        loadFilaments();
+    } catch (error) {
+        console.error('Error deleting filament:', error);
+        alert('Error deleting filament');
+    }
+}
+
+function showDeleteConfirmation() {
+    return new Promise((resolve) => {
+        // Create modal HTML
+        const modalHtml = `
+            <div class="modal fade" id="deleteConfirmModal" tabindex="-1" data-bs-backdrop="static">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Confirm Deletion
+                            </h5>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-3">
+                                <strong>Are you sure you want to delete this filament?</strong>
+                            </p>
+                            <p class="text-muted mb-3">
+                                This action cannot be undone. The filament record will be permanently removed from your inventory.
+                            </p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="dontAskAgain">
+                                <label class="form-check-label" for="dontAskAgain">
+                                    <small>Don't ask me again (skip confirmations for future deletions)</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="resolveDeleteConfirmation(false)">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="resolveDeleteConfirmation(true)">
+                                <i class="fas fa-trash me-1"></i>Delete Filament
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('deleteConfirmModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Store resolve function globally so buttons can access it
+        window.deleteConfirmationResolve = resolve;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        modal.show();
+        
+        // Clean up when modal is hidden
+        document.getElementById('deleteConfirmModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('deleteConfirmModal').remove();
+            delete window.deleteConfirmationResolve;
+        });
+    });
+}
+
+function resolveDeleteConfirmation(confirmed) {
+    // Check if "don't ask again" is checked
+    const dontAskAgain = document.getElementById('dontAskAgain').checked;
+    
+    if (confirmed && dontAskAgain) {
+        // Save preference to localStorage
+        localStorage.setItem('skipDeleteConfirmation', 'true');
+        console.log('Delete confirmation disabled for future deletions');
+    }
+    
+    // Hide modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+    modal.hide();
+    
+    // Resolve the promise
+    if (window.deleteConfirmationResolve) {
+        window.deleteConfirmationResolve(confirmed);
+    }
+}
+
+// Function to reset delete confirmation preference (for settings)
+function resetDeleteConfirmation() {
+    localStorage.removeItem('skipDeleteConfirmation');
+    console.log('Delete confirmation re-enabled');
+    
+    // Show success message with toast-style notification
+    showNotification('Delete confirmation has been re-enabled. You will be asked to confirm deletions again.', 'success');
+}
+
+// Function to check current delete confirmation status
+function checkDeleteConfirmationStatus() {
+    const skipConfirm = localStorage.getItem('skipDeleteConfirmation') === 'true';
+    
+    if (skipConfirm) {
+        showNotification('Delete confirmations are currently DISABLED. Filaments will be deleted immediately without asking.', 'warning');
+    } else {
+        showNotification('Delete confirmations are currently ENABLED. You will be asked to confirm before deleting filaments.', 'info');
+    }
+}
+
+// Helper function to show toast notifications
+function showNotification(message, type = 'info') {
+    // Create toast HTML
+    const toastId = 'toast-' + Date.now();
+    const bgClass = {
+        'success': 'bg-success',
+        'warning': 'bg-warning', 
+        'info': 'bg-info',
+        'danger': 'bg-danger'
+    }[type] || 'bg-info';
+    
+    const toastHtml = `
+        <div class="toast position-fixed top-0 end-0 m-3" id="${toastId}" style="z-index: 1060">
+            <div class="toast-header ${bgClass} text-white">
+                <i class="fas fa-cog me-2"></i>
+                <strong class="me-auto">Settings</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    // Add toast to page
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Show toast
+    const toast = new bootstrap.Toast(document.getElementById(toastId), {
+        autohide: true,
+        delay: 5000
+    });
+    toast.show();
+    
+    // Remove toast element after it's hidden
+    document.getElementById(toastId).addEventListener('hidden.bs.toast', () => {
+        document.getElementById(toastId).remove();
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <style>
+      .cube-front { fill: #ffffff; stroke: #007bff; stroke-width: 2; stroke-linejoin: round; }
+      .cube-top { fill: #c8dcff; stroke: #007bff; stroke-width: 2; stroke-linejoin: round; }
+      .cube-right { fill: #96b8ff; stroke: #007bff; stroke-width: 2; stroke-linejoin: round; }
+      .cube-edge { stroke: #007bff; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+  
+  <!-- Large 3D Cube that fills most of the 32x32 space -->
+  <!-- Front face - main visible face -->
+  <polygon class="cube-front" points="3,8 25,8 25,24 3,24"/>
+  
+  <!-- Top face - creates 3D depth -->
+  <polygon class="cube-top" points="3,8 8,3 30,3 25,8"/>
+  
+  <!-- Right face - adds dimension -->
+  <polygon class="cube-right" points="25,8 30,3 30,19 25,24"/>
+  
+  <!-- Internal edges for better 3D definition -->
+  <line class="cube-edge" x1="25" y1="8" x2="30" y2="3"/>
+  <line class="cube-edge" x1="25" y1="24" x2="30" y2="19"/>
+</svg>

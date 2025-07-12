@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block title %}Add Filament - 3D Printer Filament Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-plus me-2"></i>Add New Filament</h4>
+            </div>
+            <div class="card-body">
+                {% if success %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+                
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <form method="post" action="/add">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="brand" class="form-label">
+                                Brand * 
+                                <small class="text-muted">
+                                    <i class="fas fa-magic me-1"></i>Start typing for suggestions
+                                </small>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="brand" name="brand" required 
+                                       placeholder="Start typing: Hatchbox, eSUN, Overture..." 
+                                       list="brandDatalist" autocomplete="off">
+                                <button type="button" class="btn btn-outline-primary" id="lookupBtn" 
+                                        onclick="performLookup()">
+                                    <i class="fas fa-search"></i> Lookup
+                                </button>
+                            </div>
+                            <div id="brandSuggestions" class="list-group position-absolute" style="z-index: 1000; display: none; max-height: 200px; overflow-y: auto;"></div>
+                            
+                            <!-- HTML5 Datalist for native autocomplete -->
+                            <datalist id="brandDatalist">
+                                <!-- Options will be populated by JavaScript -->
+                            </datalist>
+                            <small class="form-text text-muted">
+                                <span id="brandCount">Loading brands...</span> • 
+                                Autocomplete available
+                            </small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="material" class="form-label">Material *</label>
+                            <select class="form-select" id="material" name="material" required>
+                                <option value="">Select Material</option>
+                                <option value="PLA">PLA</option>
+                                <option value="ABS">ABS</option>
+                                <option value="PETG">PETG</option>
+                                <option value="TPU">TPU (Flexible)</option>
+                                <option value="ASA">ASA</option>
+                                <option value="PC">Polycarbonate</option>
+                                <option value="NYLON">Nylon</option>
+                                <option value="WOOD">Wood Fill</option>
+                                <option value="METAL">Metal Fill</option>
+                                <option value="CARBON_FIBER">Carbon Fiber</option>
+                                <option value="PVA">PVA (Support)</option>
+                                <option value="HIPS">HIPS</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Lookup Results Alert -->
+                    <div id="lookupResults" class="alert alert-info" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-info-circle me-2"></i>
+                                <span id="lookupMessage">Found specifications online!</span>
+                            </div>
+                            <button type="button" class="btn-close" onclick="document.getElementById('lookupResults').style.display='none'"></button>
+                        </div>
+                        <div id="lookupDetails" class="mt-2"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="color" class="form-label">Color *</label>
+                            <input type="text" class="form-control" id="color" name="color" required 
+                                   placeholder="e.g., Red, Blue, Transparent">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="diameter" class="form-label">Diameter (mm) *</label>
+                            <select class="form-select" id="diameter" name="diameter" required>
+                                <option value="1.75">1.75mm</option>
+                                <option value="3.0">3.0mm</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="weight" class="form-label">Weight (grams)</label>
+                            <input type="number" class="form-control" id="weight" name="weight" step="0.1" 
+                                   placeholder="e.g., 1000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="storage_location" class="form-label">Storage Location</label>
+                            <input type="text" class="form-control" id="storage_location" name="storage_location" 
+                                   placeholder="e.g., Shelf A, Drawer 2, Dry Box 1">
+                        </div>
+                    </div>
+
+                    <h5 class="text-primary mt-4 mb-3">
+                        <i class="fas fa-thermometer-half me-2"></i>Temperature Settings
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="nozzle_temp_min" class="form-label">Min Nozzle Temp (°C)</label>
+                            <input type="number" class="form-control" id="nozzle_temp_min" name="nozzle_temp_min" 
+                                   placeholder="e.g., 190">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="nozzle_temp_max" class="form-label">Max Nozzle Temp (°C)</label>
+                            <input type="number" class="form-control" id="nozzle_temp_max" name="nozzle_temp_max" 
+                                   placeholder="e.g., 220">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="nozzle_temp_recommended" class="form-label">
+                                Recommended Temp (°C)
+                                <small class="text-muted d-block">Manufacturer suggested</small>
+                            </label>
+                            <input type="number" class="form-control" id="nozzle_temp_recommended" name="nozzle_temp_recommended" 
+                                   placeholder="e.g., 205">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="bed_temp" class="form-label">Bed Temperature (°C)</label>
+                            <input type="number" class="form-control" id="bed_temp" name="bed_temp" 
+                                   placeholder="e.g., 60">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="print_speed_recommended" class="form-label">
+                                Recommended Print Speed (mm/s)
+                                <small class="text-muted d-block">Optimal speed for quality</small>
+                            </label>
+                            <input type="number" class="form-control" id="print_speed_recommended" name="print_speed_recommended" 
+                                   placeholder="e.g., 60">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Add any additional notes about this filament..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="purchase_price" class="form-label">Purchase Price ($)</label>
+                            <input type="number" class="form-control" id="purchase_price" name="purchase_price" 
+                                   step="0.01" placeholder="e.g., 25.99">
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Inventory
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Add Filament
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Reference Card -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Temperature Reference Guide</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Common Materials:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>PLA:</strong> 190-220°C (rec: 200°C), 60°C bed, 60 mm/s</li>
+                            <li><strong>ABS:</strong> 220-250°C (rec: 235°C), 90°C bed, 50 mm/s</li>
+                            <li><strong>PETG:</strong> 220-250°C (rec: 235°C), 75°C bed, 45 mm/s</li>
+                            <li><strong>TPU:</strong> 210-230°C (rec: 220°C), 50°C bed, 20 mm/s</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Tips:</h6>
+                        <ul class="list-unstyled">
+                            <li>• Use recommended temp as starting point</li>
+                            <li>• Lower speeds for better quality, higher for faster prints</li>
+                            <li>• Different colors may require slight adjustments</li>
+                            <li>• Check manufacturer specifications when available</li>
+                            <li>• Store filaments in dry conditions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let brandSuggestionsTimeout;
+
+// Global function for lookup (called by onclick and event listener)
+async function performLookup() {
+    console.log('performLookup() called');
+    
+    const brand = document.getElementById('brand').value.trim();
+    const material = document.getElementById('material').value;
+    const color = document.getElementById('color').value.trim();
+    
+    console.log('Lookup values:', { brand, material, color }); // Debug
+    
+    if (!brand || !material) {
+        alert('Please enter both brand and material before looking up specifications.');
+        return;
+    }
+    
+    const lookupBtn = document.getElementById('lookupBtn');
+    const originalHTML = lookupBtn.innerHTML;
+    lookupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Looking up...';
+    lookupBtn.disabled = true;
+    
+    try {
+        const params = new URLSearchParams({
+            brand: brand,
+            material: material
+        });
+        
+        if (color) {
+            params.append('color', color);
+        }
+        
+        const url = `/api/lookup/filament?${params}`;
+        console.log('Making request to:', url); // Debug
+        
+        const response = await axios.get(url);
+        const specs = response.data;
+        
+        console.log('Lookup response:', specs); // Debug
+        
+        if (specs.found) {
+            // Fill in the form with found specifications
+            if (specs.nozzle_temp_min) document.getElementById('nozzle_temp_min').value = specs.nozzle_temp_min;
+            if (specs.nozzle_temp_max) document.getElementById('nozzle_temp_max').value = specs.nozzle_temp_max;
+            if (specs.nozzle_temp_recommended) document.getElementById('nozzle_temp_recommended').value = specs.nozzle_temp_recommended;
+            if (specs.bed_temp) document.getElementById('bed_temp').value = specs.bed_temp;
+            if (specs.print_speed_recommended) document.getElementById('print_speed_recommended').value = specs.print_speed_recommended;
+            
+            // Update notes with found information
+            const currentNotes = document.getElementById('notes').value;
+            const newNotes = specs.notes;
+            if (newNotes && !currentNotes.includes(newNotes)) {
+                document.getElementById('notes').value = currentNotes ? 
+                    `${currentNotes}\n\n${newNotes}` : newNotes;
+            }
+            
+            // Show success message
+            showLookupResult(true, specs);
+            
+            // Set button to completed state
+            setLookupButtonComplete(true);
+        } else {
+            // Show that default values were used
+            showLookupResult(false, specs);
+            
+            // Set button to completed state (even for defaults)
+            setLookupButtonComplete(false);
+        }
+        
+    } catch (error) {
+        console.error('Lookup error:', error);
+        showLookupResult(false, { 
+            source: "Error", 
+            notes: "Failed to lookup specifications. Please enter manually." 
+        });
+        
+        // Reset button on error
+        lookupBtn.innerHTML = originalHTML;
+        lookupBtn.disabled = false;
+        lookupBtn.className = 'btn btn-outline-primary';
+    }
+}
+
+// Hide suggestions when clicking outside
+document.addEventListener('click', function(e) {
+    const suggestionsDiv = document.getElementById('brandSuggestions');
+    const brandInput = document.getElementById('brand');
+    
+    if (!suggestionsDiv.contains(e.target) && e.target !== brandInput) {
+        suggestionsDiv.style.display = 'none';
+    }
+});
+
+function selectBrand(brand) {
+    document.getElementById('brand').value = brand;
+    document.getElementById('brandSuggestions').style.display = 'none';
+    updateLookupButton();
+}
+
+function updateLookupButton() {
+    const brand = document.getElementById('brand').value.trim();
+    const material = document.getElementById('material').value;
+    const lookupBtn = document.getElementById('lookupBtn');
+    
+    console.log('updateLookupButton called:', { brand, material, hasBtn: !!lookupBtn }); // Debug
+    
+    if (lookupBtn) {
+        const shouldEnable = brand && material;
+        lookupBtn.disabled = !shouldEnable;
+        console.log('Button enabled:', shouldEnable); // Debug
+    }
+}
+
+function setLookupButtonComplete(success) {
+    const lookupBtn = document.getElementById('lookupBtn');
+    
+    if (success) {
+        // Success state - green button with checkmark
+        lookupBtn.innerHTML = '<i class="fas fa-check-circle me-1"></i>Lookup Complete';
+        lookupBtn.className = 'btn btn-success';
+        lookupBtn.disabled = false;
+    } else {
+        // Warning state - yellow button indicating defaults used
+        lookupBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Defaults Used';
+        lookupBtn.className = 'btn btn-warning';
+        lookupBtn.disabled = false;
+    }
+    
+    // Reset button after 5 seconds
+    setTimeout(() => {
+        resetLookupButton();
+    }, 5000);
+}
+
+function resetLookupButton() {
+    const lookupBtn = document.getElementById('lookupBtn');
+    lookupBtn.innerHTML = '<i class="fas fa-search"></i> Lookup';
+    lookupBtn.className = 'btn btn-outline-primary';
+    
+    // Re-check if button should be enabled based on current inputs
+    updateLookupButton();
+}
+
+function showLookupResult(found, specs) {
+    const resultsDiv = document.getElementById('lookupResults');
+    const messageSpan = document.getElementById('lookupMessage');
+    const detailsDiv = document.getElementById('lookupDetails');
+    
+    if (found) {
+        resultsDiv.className = 'alert alert-success';
+        messageSpan.textContent = `Found specifications from ${specs.source}!`;
+    } else {
+        resultsDiv.className = 'alert alert-warning';
+        messageSpan.textContent = `Used default values for ${specs.source || 'this material'}`;
+    }
+    
+    // Show details
+    let details = '<small>';
+    if (specs.nozzle_temp_min && specs.nozzle_temp_max) {
+        details += `<strong>Nozzle Range:</strong> ${specs.nozzle_temp_min}°C - ${specs.nozzle_temp_max}°C<br>`;
+    }
+    if (specs.nozzle_temp_recommended) {
+        details += `<strong>Recommended Temp:</strong> ${specs.nozzle_temp_recommended}°C<br>`;
+    }
+    if (specs.bed_temp) {
+        details += `<strong>Bed:</strong> ${specs.bed_temp}°C<br>`;
+    }
+    if (specs.print_speed_recommended) {
+        details += `<strong>Print Speed:</strong> ${specs.print_speed_recommended} mm/s<br>`;
+    }
+    if (specs.typical_properties && specs.typical_properties.length > 0) {
+        details += `<strong>Properties:</strong> ${specs.typical_properties.join(', ')}<br>`;
+    }
+    details += '</small>';
+    
+    detailsDiv.innerHTML = details;
+    resultsDiv.style.display = 'block';
+    
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+        resultsDiv.style.display = 'none';
+    }, 10000);
+}
+
+// Auto-fill temperature suggestions based on material selection (fallback)
+function setupMaterialAutofill() {
+    const materialSelect = document.getElementById('material');
+    if (materialSelect) {
+        materialSelect.addEventListener('change', function() {
+            const material = this.value;
+            const tempSuggestions = {
+                'PLA': { nozzle_min: 190, nozzle_max: 220, nozzle_recommended: 200, bed: 60, print_speed: 60 },
+                'ABS': { nozzle_min: 220, nozzle_max: 250, nozzle_recommended: 235, bed: 90, print_speed: 50 },
+                'PETG': { nozzle_min: 220, nozzle_max: 250, nozzle_recommended: 235, bed: 75, print_speed: 45 },
+                'TPU': { nozzle_min: 210, nozzle_max: 230, nozzle_recommended: 220, bed: 50, print_speed: 20 },
+                'ASA': { nozzle_min: 240, nozzle_max: 260, nozzle_recommended: 250, bed: 90, print_speed: 45 },
+                'PC': { nozzle_min: 270, nozzle_max: 300, nozzle_recommended: 285, bed: 110, print_speed: 30 },
+                'NYLON': { nozzle_min: 240, nozzle_max: 280, nozzle_recommended: 260, bed: 80, print_speed: 35 },
+                'HIPS': { nozzle_min: 220, nozzle_max: 240, nozzle_recommended: 230, bed: 90, print_speed: 50 },
+                'PVA': { nozzle_min: 180, nozzle_max: 200, nozzle_recommended: 190, bed: 60, print_speed: 25 }
+            };
+            
+            // Only auto-fill if fields are empty
+            if (tempSuggestions[material]) {
+                const temps = tempSuggestions[material];
+                if (!document.getElementById('nozzle_temp_min').value) {
+                    document.getElementById('nozzle_temp_min').value = temps.nozzle_min;
+                }
+                if (!document.getElementById('nozzle_temp_max').value) {
+                    document.getElementById('nozzle_temp_max').value = temps.nozzle_max;
+                }
+                if (!document.getElementById('nozzle_temp_recommended').value) {
+                    document.getElementById('nozzle_temp_recommended').value = temps.nozzle_recommended;
+                }
+                if (!document.getElementById('bed_temp').value) {
+                    document.getElementById('bed_temp').value = temps.bed;
+                }
+                if (!document.getElementById('print_speed_recommended').value) {
+                    document.getElementById('print_speed_recommended').value = temps.print_speed;
+                }
+            }
+        });
+    }
+}
+
+// Load all brands for autocomplete
+async function loadBrandDatalist() {
+    try {
+        const response = await axios.get('/api/brands/all');
+        const brands = response.data.brands;
+        
+        const datalist = document.getElementById('brandDatalist');
+        datalist.innerHTML = ''; // Clear existing options
+        
+        brands.forEach(brand => {
+            const option = document.createElement('option');
+            option.value = brand;
+            datalist.appendChild(option);
+        });
+        
+        // Update brand count display
+        const brandCount = document.getElementById('brandCount');
+        if (brandCount) {
+            brandCount.textContent = `${brands.length} brands available`;
+        }
+        
+        console.log(`Loaded ${brands.length} brands for autocomplete`);
+    } catch (error) {
+        console.error('Failed to load brand datalist:', error);
+        const brandCount = document.getElementById('brandCount');
+        if (brandCount) {
+            brandCount.textContent = 'Failed to load brands';
+        }
+    }
+}
+
+// Enhanced brand input with autocomplete
+function setupBrandAutocomplete() {
+    const brandInput = document.getElementById('brand');
+    const suggestionsDiv = document.getElementById('brandSuggestions');
+    
+    brandInput.addEventListener('input', function(e) {
+        const value = e.target.value.trim();
+        
+        // Hide custom suggestions when using datalist
+        if (e.inputType === 'insertReplacementText') {
+            suggestionsDiv.style.display = 'none';
+            updateLookupButton();
+            return;
+        }
+        
+        // Show custom suggestions for short inputs or when datalist isn't working well
+        if (value.length >= 1) {
+            clearTimeout(brandSuggestionsTimeout);
+            brandSuggestionsTimeout = setTimeout(async () => {
+                await showBrandSuggestions(value);
+            }, 300);
+        } else {
+            suggestionsDiv.style.display = 'none';
+        }
+        
+        updateLookupButton();
+    });
+    
+    // Handle selection from datalist
+    brandInput.addEventListener('change', function() {
+        suggestionsDiv.style.display = 'none';
+        updateLookupButton();
+    });
+}
+
+async function showBrandSuggestions(query) {
+    const suggestionsDiv = document.getElementById('brandSuggestions');
+    
+    try {
+        const response = await axios.get(`/api/lookup/brands?q=${encodeURIComponent(query)}`);
+        const suggestions = response.data.suggestions;
+        
+        if (suggestions.length > 0) {
+            suggestionsDiv.innerHTML = suggestions.map(brand => 
+                `<button type="button" class="list-group-item list-group-item-action" onclick="selectBrand('${brand}')">${brand}</button>`
+            ).join('');
+            suggestionsDiv.style.display = 'block';
+        } else {
+            suggestionsDiv.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error fetching brand suggestions:', error);
+        suggestionsDiv.style.display = 'none';
+    }
+}
+
+// Auto-dismiss alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
+    // Load brand autocomplete data
+    loadBrandDatalist();
+    
+    // Setup enhanced brand autocomplete
+    setupBrandAutocomplete();
+    
+    // Setup material autofill
+    setupMaterialAutofill();
+    
+    // Enable/disable lookup button when inputs change
+    const brandInput = document.getElementById('brand');
+    const materialSelect = document.getElementById('material');
+    
+    if (brandInput && materialSelect) {
+        // Add event listeners
+        brandInput.addEventListener('input', updateLookupButton);
+        materialSelect.addEventListener('change', updateLookupButton);
+        
+        // Initial check
+        updateLookupButton();
+        
+        console.log('Event listeners added to brand and material inputs');
+    }
+    
+    // Also add event listener as backup to onclick
+    const lookupBtn = document.getElementById('lookupBtn');
+    if (lookupBtn) {
+        lookupBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Event listener triggered');
+            performLookup();
+        });
+        console.log('Event listener added to lookup button');
+    }
+    
+    const successAlert = document.querySelector('.alert-success');
+    const errorAlert = document.querySelector('.alert-danger');
+    
+    if (successAlert) {
+        setTimeout(function() {
+            successAlert.classList.remove('show');
+            setTimeout(function() {
+                successAlert.remove();
+            }, 150);
+        }, 5000);
+    }
+    
+    if (errorAlert) {
+        setTimeout(function() {
+            errorAlert.classList.remove('show');
+            setTimeout(function() {
+                errorAlert.remove();
+            }, 150);
+        }, 8000); // Keep error messages visible longer
+    }
+});
+</script>
+{% endblock %}
